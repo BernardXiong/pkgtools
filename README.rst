@@ -19,3 +19,7 @@ Commands
     pkg uninstall -r <package>  # Uninstall package and all dependencies
     pkg lock <package>          # Prevent package from being upgraded
     pkg unlock <package>        # Unlock package
+
+    # Nice to have
+    pkg rollback                # Rollback to previous state of installed packages
+    pkg commit                  # Commit current state of installed packages
