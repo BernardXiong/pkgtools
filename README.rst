@@ -2,6 +2,15 @@ Package Manager
 ===============
 
 
+Features
+--------
+
+* Package Signing
+* Pre/Post Install/Remove
+* Optional dependency support
+* Partial diffs
+
+
 Commands
 --------
 
