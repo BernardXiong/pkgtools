@@ -9,7 +9,10 @@ from __future__ import print_function
 from os.path import dirname
 from pkgutil import iter_modules
 from importlib import import_module
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, FileType
+
+
+from yaml import load as load_yaml
 
 
 from . import cmds
@@ -20,6 +23,13 @@ def parse_args():
     parser = ArgumentParser(
         description=__doc__,
         version=__version__,
+        formatter_class=ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument(
+        "-c", "--config", dest="config",
+        default="/etc/pkg.yml", type=FileType("r"),
+        help="Specify alternative configuration file"
     )
 
     parser.add_argument(
@@ -44,7 +54,9 @@ def parse_args():
 def main():
     args = parse_args()
 
-    args.func(args)
+    conf = load_yaml(args.config)
+
+    args.func(args, conf)
 
 
 if __name__ == "__main__":

@@ -6,9 +6,10 @@
 from __future__ import print_function
 
 
-def main(args):
+def main(args, conf):
     print("Build ...")
     print("args:", repr(args))
+    print("conf:", repr(conf))
 
 
 def init(subparsers):
