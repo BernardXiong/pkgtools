@@ -5,6 +5,8 @@
 
 from __future__ import print_function
 
+from argparse import ArgumentDefaultsHelpFormatter
+
 
 def main(args, conf):
     print("Build ...")
@@ -15,7 +17,8 @@ def main(args, conf):
 def init(subparsers):
     parser = subparsers.add_parser(
         "build",
-        help="Build package"
+        help="Build package",
+        formatter_class=ArgumentDefaultsHelpFormatter,
     )
     parser.set_defaults(func=main)
 
