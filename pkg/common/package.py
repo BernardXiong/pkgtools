@@ -14,7 +14,6 @@ PKG_VERSION_SEP = "#"
 PKG_EXTENSION = ".pkg.tar.gz"
 
 
-
 class Package(object): 
     '''
         Package Class
