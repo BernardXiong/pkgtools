@@ -1,4 +1,7 @@
 *~
+tmp
 dist
 build
+*.spec
 *.py[co]
+*.egg-info
