@@ -11,18 +11,23 @@ Utility functions
 from __future__ import print_function
 
 import sys
+from bz2 import BZ2File
+from gzip import GzipFile
+from tarfile import TarFile
+from zipfile import ZipFile
+from os import getcwd, path
+from urlparse import urlsplit
 from hashlib import sha256 as sha
+from traceback import format_exception
+from subprocess import Popen, PIPE, STDOUT
 
 
 from requests import get
+from progress.bar import Bar as ProgressBar
 
 
 def log(msg):
     print(msg, file=sys.stderr)
-
-
-def download(url):
-    pass
 
 
 def verify(filename, checksum):
@@ -63,86 +68,73 @@ def write_shasum(checksums, filename):
                 ("{}\t{}".format(filename, checksum) for filename, checksum in checksums)
             )
         )
-def extractto(archive, output=None):
+
+
+def extract(archive, output=None):
     output = output or getcwd()
 
     if any(archive.endswith(x) for x in [".tar.gz", ".tar.bz2"]):
-        with TarFile(archive, "r:{0:s}".format(splitext(archive)[1][1:])) as f:
-            f.extractall(output, [x for x in f.getmembers() if not path_exists(x)])
+        with TarFile(archive, "r:{0:s}".format(path.splitext(archive)[1][1:])) as f:
+            f.extractall(output, [x for x in f.getmembers() if not path.exists(x)])
     elif archive.endswith(".zip"):
         with ZipFile(archive) as f:
-            f.extractall(output, [x for x in f.namelist() if not path_exists(x)])
+            f.extractall(output, [x for x in f.namelist() if not path.exists(x)])
     elif archive.endswith(".gz"):
-        outfile = path_join(output, splitext(archive)[0])
-        if not path_exists(outfile):
+        outfile = path.join(output, path.splitext(archive)[0])
+        if not path.exists(outfile):
             with GzipFile(archive, "rb") as f:
                 with open(outfile, "wb") as of:
                     of.write(f.read())
     elif archive.endswith(".bz2"):
-        outfile = path_join(output, splitext(archive)[0])
-        if not path_exists(outfile):
+        outfile = path.join(output, path.splitext(archive)[0])
+        if not path.exists(outfile):
             with BZ2File(archive, "rb") as f:
                 with open(outfile, "wb") as of:
                     of.write(f.read())
 
 
 def url2basename(url):
-    return basename(urlsplit(url)[2])
+    return path.basename(urlsplit(url)[2])
 
 
-def rsync(src, dest):
-    parts = urlparse(src)
-    if parts.netloc:
-        if "@" in parts.netloc:
-            user, host = parts.netloc.split("@", 1)
-        else:
-            user, host = "", parts.netloc
-
-        options = "-o ssh {0:s}{1:s}".format(user, host)
-    else:
-        options = ""
-
-    local("rsync --recursive --compress --stats --progress --human-readable {0:s} {1:s} {2:s}".format(options, src, dest))
-
-
-def download(url, filename=None, md5=None, pwd=None, bs=8192):
+def download(url, filename=None, pwd=None, bs=8192):
     r = get(url, stream=True)
 
-    if not filename:
-        if "Content-Disposition" in r.headers:
-            filename = r.headers["Content-Disposition"].split("filename=")[1]
-            filename = filename.replace("\"", "").replace("'", "")
-
-    if not filename:
+    if not filename and "Content-Disposition" in r.headers:
+        filename = r.headers["Content-Disposition"].split("filename=")[1]
+        filename = filename.replace("\"", "").replace("'", "")
+    else:
         filename = url2basename(r.url)
 
-    if pwd is not None and not isabs(filename):
-        filename = path_join(pwd, filename)
-
-    # Skip if an .md5 exists
-    if md5 is not None:
-        if path_exists("{0:s}.md5".format(filename)) and md5 == open("{0:s}.md5".format(filename), "r").read().strip():
-            return
-        else:
-            open("{0:s}.md5".format(filename), "w").write(md5)
-    else:
-        try:
-            x = get("{0:s}.md5".format(url))
-            x.raise_for_status()
-            if path_exists("{0:s}.md5".format(filename)) and x.content.strip() == open("{0:s}.md5".format(filename), "r").read().strip():
-                return
-            else:
-                open("{0:s}.md5".format(filename), "w").write(x.content.strip())
-        except:
-            pass
+    if pwd is not None and not path.isabs(filename):
+        filename = path.join(pwd, filename)
 
     cl = int(r.headers.get("Content-Length", "0"))
 
-    print "Downloading {0:s} Bytes: {1:d} ...".format(basename(filename), cl)
+    print("Downloading {0:s} Bytes: {1:d} ...".format(path.basename(filename), cl))
     with open(filename, "wb") as f:
         bar = ProgressBar(max=cl)
         for block in r.iter_content(bs):
             f.write(block)
             bar.next(bs)
         bar.finish()
-    print
+    print()
+
+
+def format_error():
+    etype, evalue, tb = sys.exc_info()
+    traceback = "\r\n".join(
+        ("i{}".format(line) for line in format_exception(etype, evalue, tb))
+    )
+    return "3{}{}\terror.host\t0\r\n{}".format(etype.__name__, evalue, traceback)
+
+
+def execute(args, **kwargs):
+    kwargs.update(stderr=STDOUT, stdout=PIPE)
+
+    try:
+        p = Popen(args, **kwargs)
+        stdout, _ = p.communicate()
+        return stdout
+    except:
+        return format_error()
