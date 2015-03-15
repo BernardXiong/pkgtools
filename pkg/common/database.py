@@ -18,13 +18,6 @@ class Database(object):
         At the moment database file is simply a 
         list of installed packages. Should probably become
         an sqlite database though.
-
-        @todo: consider making this class work with `with`
-            eg.
-                with x as d:
-                    do stuff
-                auto-commit & cleanup
-
     '''
 
     def __init__(self, filename):
