@@ -1,5 +1,6 @@
 requests
 progress
+pathlib
 PyYAML
 funcy
 ujson

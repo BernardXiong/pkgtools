@@ -1,6 +1,7 @@
 pyinstaller
 requests
 progress
+pathlib
 PyYAML
 ujson
 funcy
