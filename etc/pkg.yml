@@ -1,0 +1,4 @@
+sources:
+    - .
+archive_format: tar
+compression_format: xz

@@ -1,4 +1,7 @@
 pyinstaller
 requests
+PyYAML
+ujson
 funcy
 ujson
+pudb
