@@ -25,14 +25,11 @@ class Database(object):
                     do stuff
                 auto-commit & cleanup
 
-
     '''
 
     def __init__(self, filename):
         self.filename = path.abspath(filename)
-
-        with open(self.filename) as db_file:
-            self._database = json.load(db_file)
+        self._load()
 
     def add(self, package):
         '''
@@ -82,28 +79,43 @@ class Database(object):
 
         return False
 
-    def __contains__(self, package):
-        '''
-            Syntatic sugar for using `in` and `not in`
-            with database instances.
-        '''
-        return self.contains(package)
-
     def commit(self):
         '''
             Save the various add and remove operations performed.
         '''
         self._write_replace_save()
 
+    def rollback(self):
+        '''
+            Reload our _database from the fs.
+        '''
+        self._load()
+
+    def _load(self):
+        '''
+            Load the list of packages from the db
+        '''
+        with open(self.filename) as db_file:
+            self._database = json.load(db_file)
+
     def _write_replace_save(self):
         '''
             Uses a Write-replace pattern
         '''
-
         with TempFile('w', dir=path.dirname(self.filename), delete=False) as tmp_file:
             tmp_file.write(json.dump(self._database, tmp_file))
             tempname = tmp_file.name
 
         os.rename(tempname, self.filename)
 
+    def __enter__(self):
+        return self
 
+    def __exit__(self, ex_type, value, trace):
+        if ex_type is None:
+            self.commit()
+        else:
+            self.rollback()
+
+    def __contains__(self, package):
+        return self.contains(package)
