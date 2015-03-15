@@ -30,8 +30,9 @@ class Database(object):
 
     def __init__(self, filename):
         self.filename = path.abspath(filename)
+
         with open(self.filename) as db_file:
-            self._database = json.loads(db_file.read())
+            self._database = json.load(db_file)
 
     def add(self, package):
         '''
@@ -100,7 +101,7 @@ class Database(object):
         '''
 
         with TempFile('w', dir=path.dirname(self.filename), delete=False) as tmp_file:
-            tmp_file.write(json.dumps(self._database))
+            tmp_file.write(json.dump(self._database, tmp_file))
             tempname = tmp_file.name
 
         os.rename(tempname, self.filename)
