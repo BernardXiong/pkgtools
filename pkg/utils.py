@@ -11,9 +11,9 @@ Utility functions
 from __future__ import print_function
 
 import sys
+import tarfile
 from bz2 import BZ2File
 from gzip import GzipFile
-from tarfile import TarFile
 from zipfile import ZipFile
 from os import getcwd, path
 from urlparse import urlsplit
@@ -74,11 +74,11 @@ def extract(archive, output=None):
     output = output or getcwd()
 
     if any(archive.endswith(x) for x in [".tar.gz", ".tar.bz2"]):
-        with TarFile(archive, "r:{0:s}".format(path.splitext(archive)[1][1:])) as f:
-            f.extractall(output, [x for x in f.getmembers() if not path.exists(x)])
+        with tarfile.open(archive, "r:{0:s}".format(path.splitext(archive)[1][1:])) as f:
+            f.extractall(output)
     elif archive.endswith(".zip"):
         with ZipFile(archive) as f:
-            f.extractall(output, [x for x in f.namelist() if not path.exists(x)])
+            f.extractall(output)
     elif archive.endswith(".gz"):
         outfile = path.join(output, path.splitext(archive)[0])
         if not path.exists(outfile):
