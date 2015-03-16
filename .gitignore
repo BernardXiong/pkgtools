@@ -1,6 +1,7 @@
 *~
 tmp
 dist
+work
 build
 *.spec
 *.py[co]
