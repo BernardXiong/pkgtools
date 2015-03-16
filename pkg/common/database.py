@@ -18,6 +18,14 @@ class Database(object):
         At the moment database file is simply a 
         list of installed packages. Should probably become
         an sqlite database though.
+
+        Database file should look something like:
+
+        {
+            <package_name>: {
+                <version-str>: <SOMETHING>
+            }
+        }
     '''
 
     def __init__(self, filename):
@@ -29,13 +37,15 @@ class Database(object):
             Add a package to the database.
         '''
         if package in self:
-
             if self.contains(package, version=True):
-                raise ValueError("Given version of %s is already installed." % package.name)
-            else:
-                self._database[package.name] = package
+                raise ValueError("Given version of %s is already in this database." % package.name)
+
+            self._database[package.name][package.version] = True
+
         else:
-            self._database[package.name] = package
+            self._database[package.name] = {}
+            # Whatever it is we store with packages
+            self._database[package.name][package.version] = True 
 
     def remove(self, package, version=False):
         '''
@@ -62,15 +72,27 @@ class Database(object):
             if version is true, ensure the given 
             version is installed.
         '''
-        pkg = self._database.get(package.name, False)
+        if package.name in self._database:
+            if version:
+                if package.version in self._database[package.name]:
+                    return True
 
-        if pkg and not version:
-            return bool(pkg)
-
-        elif pkg:
-            return pkg.version is package.version
+            else:
+                return True
 
         return False
+
+    def list(self):
+        '''
+            Return the list of all packages and the 
+            available versions.
+        '''
+        ret = {}
+
+        for key, val in self._database.iteritems():
+            ret[key] = val.keys() # Grabs the available versions
+
+        return ret
 
     def commit(self):
         '''

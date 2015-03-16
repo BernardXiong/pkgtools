@@ -14,6 +14,31 @@ PKG_VERSION_SEP = "#"
 PKG_EXTENSION = ".pkg.tar.gz"
 
 
+class FileAccessor(object):
+    '''
+
+    '''
+
+    def __init__(self, files, pkgtar=None):
+        self.filenames = files
+        self._pkgtar = pkgtar
+
+    def __getitem__(self, key):
+        if self._pkgtar is not None:
+            # Extract our file out for the tarfile and store 
+            # it in tmp somewhere
+            return True
+
+        else:
+            raise ValueError("Unable to retrieve descriptor for file.")
+
+    def __setitem__(self, key, value):
+        raise TypeError("Files cannot be set on a package.")
+
+    def __delitem__(self, key):
+        raise TypeError("Files cannot be removed from a package")
+
+
 class Package(object): 
     '''
         Package Class
@@ -33,7 +58,7 @@ class Package(object):
         '''
         self.name = name
         self.version = version
-        self.files = files
+        self.files = FileAccessor(files, pkgtar=pkgtar)
 
         self._tarfile = pkgtar
 
