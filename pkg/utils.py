@@ -139,11 +139,15 @@ def format_error():
 
 
 def execute(args, **kwargs):
+    stream = kwargs.pop("stream", False)
     kwargs.update(stderr=STDOUT, stdout=PIPE)
 
     try:
         p = Popen(args, **kwargs)
-        stdout, _ = p.communicate()
-        return stdout
+        if stream:
+            return iter(lambda: p.stdout.read(1), "")
+        else:
+            stdout, _ = p.communicate()
+            return stdout
     except:
         return format_error()
