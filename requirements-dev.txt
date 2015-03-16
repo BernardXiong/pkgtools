@@ -1,5 +1,6 @@
 pyinstaller
 requests
+progress
 PyYAML
 ujson
 funcy

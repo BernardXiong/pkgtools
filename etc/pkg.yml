@@ -1,4 +1,4 @@
-sources:
-    - .
+collections:
+    - test:file://.
 archive_format: tar
 compression_format: xz
