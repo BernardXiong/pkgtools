@@ -22,7 +22,7 @@ from traceback import format_exception
 from subprocess import Popen, PIPE, STDOUT
 
 
-from requests import get
+from requests import get, head
 from progress.bar import Bar as ProgressBar
 
 
@@ -98,7 +98,8 @@ def url2basename(url):
 
 
 def download(url, filename=None, pwd=None, bs=8192):
-    r = get(url, stream=True)
+    r = head(url)
+    r.raise_for_status()
 
     if not filename and "Content-Disposition" in r.headers:
         filename = r.headers["Content-Disposition"].split("filename=")[1]
@@ -108,6 +109,12 @@ def download(url, filename=None, pwd=None, bs=8192):
 
     if pwd is not None and not path.isabs(filename):
         filename = path.join(pwd, filename)
+
+    if path.exists(filename):
+        return filename
+
+    r = get(url, stream=True)
+    r.raise_for_status()
 
     cl = int(r.headers.get("Content-Length", "0"))
 
@@ -119,6 +126,8 @@ def download(url, filename=None, pwd=None, bs=8192):
             bar.next(bs)
         bar.finish()
     print()
+
+    return filename
 
 
 def format_error():
