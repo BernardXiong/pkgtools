@@ -45,8 +45,11 @@ def parse_args():
     )
 
     for _, name, _ in iter_modules([dirname(cmds.__file__)]):
-        mod = import_module(".{}".format(name), cmds.__name__)
-        mod.init(subparsers)
+        try:
+            mod = import_module(".{}".format(name), cmds.__name__)
+            mod.init(subparsers)
+        except AttributeError:
+            print ("Command %s has no init method.  Command not bound." % name)
 
     return parser.parse_args()
 

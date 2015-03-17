@@ -4,5 +4,5 @@ progress
 PyYAML
 ujson
 funcy
-ujson
 pudb
+pathlib

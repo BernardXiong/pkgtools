@@ -3,3 +3,4 @@ progress
 PyYAML
 funcy
 ujson
+pathlib

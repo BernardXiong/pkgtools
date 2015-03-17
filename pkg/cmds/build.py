@@ -5,20 +5,26 @@
 
 from __future__ import print_function
 
-from os import getcwd
+
+import tarfile
+from os import environ, sep
+from functools import partial
 from shutil import copy, rmtree
+from mimetypes import guess_type
+
 from argparse import ArgumentDefaultsHelpFormatter
 
 
 from pathlib import Path
+from progress.spinner import Spinner
 
 
 from ..parsers import parse_pkgfile
-from ..utils import download, execute
+from ..utils import download, execute, extract
 
 
 def PackageType(v):
-    p = Path(v).absolute()
+    p = Path(v).resolve()
 
     if p.name == "Pkgfile" and p.is_file():
         return p
@@ -30,9 +36,8 @@ def PackageType(v):
 
 
 def prepare(args, conf):
-    p = Path.cwd()
+    workdir = args.package.parent.joinpath("work")
 
-    workdir = p.joinpath("work")
     if workdir.is_dir():
         rmtree(str(workdir))
 
@@ -44,25 +49,80 @@ def prepare(args, conf):
     pkgdir.mkdir()
     srcdir.mkdir()
 
-    return {"PKG": str(pkgdir), "SRC": str(srcdir)}
+    return pkgdir, srcdir, workdir
 
 
-def download_sources(sources, srcdir):
+def download_sources(sources, workdir):
+    filenames = []
+
     for source in sources:
         if "://" in source:
             filename = source.split("#", 1)[1] if "#" in source else None
-            download(source, filename, srcdir)
+            filename = download(source, filename, str(workdir.parent))
         else:
-            copy(source, srcdir)
+            filename = source
+
+        filename = workdir.parent.joinpath(filename)
+        filenames.append(filename)
+
+    return filenames
+
+
+def strip_leading(tarinfo, path=None):
+    if path is not None:
+        tarinfo.name = ".{}".format(tarinfo.name.replace(path, ""))
+
+    return tarinfo
 
 
 def main(args, conf):
-    env = prepare(args, conf)
+    pkgdir, srcdir, workdir = prepare(args, conf)
 
-    data = parse_pkgfile(args.package)
+    pkg = parse_pkgfile(args.package)
 
+    filenames = []
     if args.download or args.download_only:
-        download_sources(data["source"], env["SRC"])
+        filenames = download_sources(pkg["source"], workdir)
+
+    if args.download_only:
+        return
+
+    for filename in filenames:
+        filename = str(filename)
+        type, encoding = guess_type(filename)
+        if type in ("application/x-tar", "application/x-zip-compressed"):
+            extract(filename, str(srcdir))
+        else:
+            copy(filename, str(srcdir))
+
+    if args.extract_only:
+        return
+
+    env = {
+        "SRC": str(srcdir),
+        "PKG": str(pkgdir),
+    }
+
+    env.update(environ)
+
+    output = execute(
+        ["/bin/bash", "-c", "source Pkgfile && cd $SRC && build"],
+        cwd=str(workdir.parent), env=env, stream=True
+    )
+
+    with workdir.parent.joinpath("build.log").open("wb") as f:
+        spinner = Spinner("Building ... ")
+        for c in output:
+            f.write(c)
+            spinner.next()
+        spinner.finish()
+
+    filename = "{}#{}-{}.tar.gz".format(pkg["name"], pkg["version"], pkg["release"])
+    with tarfile.open(str(workdir.parent.joinpath(filename)), "w:gz") as f:
+        f.add(str(pkgdir), filter=partial(strip_leading, path=str(pkgdir).lstrip(sep)))
+
+    if not args.keep_work:
+        rmtree(str(workdir))
 
 
 def init(subparsers):
