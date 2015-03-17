@@ -5,8 +5,9 @@
 
 '''
 
-from os import path
+import shutil
 import glob
+from os import path
 
 
 # Constants
@@ -39,4 +40,25 @@ class Package(object):
         self.files = [FileAccessor(f) for f in glob.glob(path.join(self.dirpath, "*"))]
 
 class FileAccessor(object):
-    pass
+    '''
+        Directory class for interacting with Package files
+    '''
+
+    def __init__(self, filepath):
+        self._path = filepath
+
+    def copy_to(self, dest):
+        '''
+            Copy file from package to `dest`
+        '''
+        shutil.copy(self._path, dest)    
+
+    def __repr__(self):
+        return "<FileAccessor: %s>" % self._path
+
+    def __get__(self, instance):
+        return self._path
+
+    def __set__(self, instance, val):
+        raise AttributeError('Cannot set this file')
+
