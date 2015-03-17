@@ -5,13 +5,11 @@
 
 from __future__ import print_function
 
-
 import tarfile
 from os import environ, sep
 from functools import partial
 from shutil import copy, rmtree
 from mimetypes import guess_type
-
 from argparse import ArgumentDefaultsHelpFormatter
 
 
@@ -20,7 +18,7 @@ from progress.spinner import Spinner
 
 
 from ..parsers import parse_pkgfile
-from ..utils import download, execute, extract
+from ..utils import download, execute, extract, url2basename
 
 
 def PackageType(v):
@@ -75,18 +73,7 @@ def strip_leading(tarinfo, path=None):
     return tarinfo
 
 
-def main(args, conf):
-    pkgdir, srcdir, workdir = prepare(args, conf)
-
-    pkg = parse_pkgfile(args.package)
-
-    filenames = []
-    if args.download or args.download_only:
-        filenames = download_sources(pkg["source"], workdir)
-
-    if args.download_only:
-        return
-
+def extract_sources(filenames, srcdir):
     for filename in filenames:
         filename = str(filename)
         type, encoding = guess_type(filename)
@@ -95,9 +82,18 @@ def main(args, conf):
         else:
             copy(filename, str(srcdir))
 
-    if args.extract_only:
-        return
 
+def remove_sources(sources, workdir):
+    for source in sources:
+        if "://" in source:
+            filename = workdir.parent.joinpath(
+                source.split("#", 1)[1] if "#" in source else url2basename(source)
+            )
+            if filename.is_file():
+                filename.unlink()
+
+
+def build_package(logfile, pkgarc, pkgdir, srcdir, workdir):
     env = {
         "SRC": str(srcdir),
         "PKG": str(pkgdir),
@@ -110,16 +106,57 @@ def main(args, conf):
         cwd=str(workdir.parent), env=env, stream=True
     )
 
-    with workdir.parent.joinpath("build.log").open("wb") as f:
+    with logfile.open("wb") as f:
         spinner = Spinner("Building ... ")
         for c in output:
             f.write(c)
             spinner.next()
         spinner.finish()
 
-    filename = "{}#{}-{}.tar.gz".format(pkg["name"], pkg["version"], pkg["release"])
-    with tarfile.open(str(workdir.parent.joinpath(filename)), "w:gz") as f:
+    with tarfile.open(str(pkgarc), "w:gz") as f:
         f.add(str(pkgdir), filter=partial(strip_leading, path=str(pkgdir).lstrip(sep)))
+
+
+def clean_workdir(logfile, pkgarc, sources, workdir):
+    if logfile.is_file():
+        logfile.unlink()
+
+    remove_sources(sources, workdir)
+
+    if pkgarc.is_file():
+        pkgarc.unlink()
+
+    rmtree(str(workdir))
+
+
+def main(args, conf):
+    pkgdir, srcdir, workdir = prepare(args, conf)
+
+    pkg = parse_pkgfile(args.package)
+
+    logfile = workdir.parent.joinpath("build.log")
+
+    pkgarc = workdir.parent.joinpath(
+        "{}#{}-{}.tar.gz".format(pkg["name"], pkg["version"], pkg["release"])
+    )
+
+    if args.clean:
+        clean_workdir(logfile, pkgarc, pkg["source"], workdir)
+        return
+
+    sources = []
+    if args.download or args.download_only:
+        sources = download_sources(pkg["source"], workdir)
+
+    if args.download_only:
+        return
+
+    extract_sources(sources, srcdir)
+
+    if args.extract_only:
+        return
+
+    build_package(logfile, pkgarc, pkgdir, srcdir, workdir)
 
     if not args.keep_work:
         rmtree(str(workdir))
