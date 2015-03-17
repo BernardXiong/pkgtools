@@ -65,15 +65,26 @@ def main(args, conf):
     if is_uri(args.package):
         tarpath = uri_download(args.package)
 
-    # Extract Tar to a tmp location
-    tmpfile = TempFile('w', dir=path.dirname(self.filename), delete=False)
-    extract(tarpath, tmpfile)
+    # elif is_file(args.package):
+    # else:
+    #   search-term
 
-    package = Package(tmpfile.name)
+    # Extract Tar to a tmp location
+
+    # tmpfile = TempFile('w', dir=path.dirname(self.filename), delete=False)
+    # extract(tarpath, tmpfile)
+
+    # package = Package(tmpfile.name)
 
     # Update database
+    # with Database(conf['installed']) as db:
+    #   db.add_package(package)
+    #
     # Copy files to their destinations
-        # If any copies fail - undo
-        # - Should package copy check permissions before attempting to copy?
-        # - Should we check all permissions before starting the copy?
-        # If database commit fails - undo
+    #   If any copies fail - undo
+    #   - Should package copy check permissions before attempting to copy?
+    #   - Should we check all permissions before starting the copy?
+    #   If database commit fails - undo
+    #       
+
+    print tarpath
