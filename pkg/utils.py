@@ -11,9 +11,9 @@ Utility functions
 from __future__ import print_function
 
 import sys
+import tarfile
 from bz2 import BZ2File
 from gzip import GzipFile
-from tarfile import TarFile
 from zipfile import ZipFile
 from os import getcwd, path
 from urlparse import urlsplit
@@ -22,7 +22,7 @@ from traceback import format_exception
 from subprocess import Popen, PIPE, STDOUT
 
 
-from requests import get
+from requests import get, head
 from progress.bar import Bar as ProgressBar
 
 
@@ -74,11 +74,11 @@ def extract(archive, output=None):
     output = output or getcwd()
 
     if any(archive.endswith(x) for x in [".tar.gz", ".tar.bz2"]):
-        with TarFile(archive, "r:{0:s}".format(path.splitext(archive)[1][1:])) as f:
-            f.extractall(output, [x for x in f.getmembers() if not path.exists(x)])
+        with tarfile.open(archive, "r:{0:s}".format(path.splitext(archive)[1][1:])) as f:
+            f.extractall(output)
     elif archive.endswith(".zip"):
         with ZipFile(archive) as f:
-            f.extractall(output, [x for x in f.namelist() if not path.exists(x)])
+            f.extractall(output)
     elif archive.endswith(".gz"):
         outfile = path.join(output, path.splitext(archive)[0])
         if not path.exists(outfile):
@@ -98,7 +98,8 @@ def url2basename(url):
 
 
 def download(url, filename=None, pwd=None, bs=8192):
-    r = get(url, stream=True)
+    r = head(url)
+    r.raise_for_status()
 
     if not filename and "Content-Disposition" in r.headers:
         filename = r.headers["Content-Disposition"].split("filename=")[1]
@@ -108,6 +109,12 @@ def download(url, filename=None, pwd=None, bs=8192):
 
     if pwd is not None and not path.isabs(filename):
         filename = path.join(pwd, filename)
+
+    if path.exists(filename):
+        return filename
+
+    r = get(url, stream=True)
+    r.raise_for_status()
 
     cl = int(r.headers.get("Content-Length", "0"))
 
@@ -120,6 +127,8 @@ def download(url, filename=None, pwd=None, bs=8192):
         bar.finish()
     print()
 
+    return filename
+
 
 def format_error():
     etype, evalue, tb = sys.exc_info()
@@ -130,11 +139,15 @@ def format_error():
 
 
 def execute(args, **kwargs):
+    stream = kwargs.pop("stream", False)
     kwargs.update(stderr=STDOUT, stdout=PIPE)
 
     try:
         p = Popen(args, **kwargs)
-        stdout, _ = p.communicate()
-        return stdout
+        if stream:
+            return iter(lambda: p.stdout.read(1), "")
+        else:
+            stdout, _ = p.communicate()
+            return stdout
     except:
         return format_error()
