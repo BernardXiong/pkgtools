@@ -1,15 +1,20 @@
 #!/bin/bash
 
 if [ -z "$1" ]; then
-    echo "Usage: $(basename $0) </path/to/Pkgfile>"
+    echo "Usage: $(basename $0) /path/to/Pkgfile"
     exit 1
 fi
 
-declare -A cfields
-cfields=([description]="Description" [maintainer]="Maintainer" [url]="URL" [depends]="Depends on")
+cfields=(
+    "description:Description"
+    "maintainer:Maintainer"
+    "url:URL"
+    "depends:Depends on"
+)
 
-for k in "${!cfields[@]}"; do
-    v="${cfields[$k]}"
+for cfield in "${cfields[@]}" ; do
+    k="${cfield%%:*}"
+    v="${cfield##*:}"
     export "$k"="$(egrep "#\s*${v}\:" $1 | sed -E "s/#\s*${v}\:\s*(.*)\s*/\1/")"
 done
 
